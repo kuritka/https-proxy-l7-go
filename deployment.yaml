@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: httpsproxy
+  namespace: proxy-system
+  labels:
+    app: httpsproxy
+  annotations:
+    buildVersion: ${buildVersion}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: httpsproxy
+  template:
+    metadata:
+      labels:
+        app: httpsproxy
+    spec:
+      #pod must be running
+      restartPolicy: Always
+      containers:
+        - name: httpsproxy
+          image: acronhosbx.azurecr.io/htp:${tag}
+          args:
+            - -port=9443
+            - -url=ulozto.cz
+          #imagePullPolicy: Always: the image is pulled every time the pod is started.
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: httpsproxy
+              mountPath: /etc/lb/certs
+              readOnly: true
+      volumes:
+        - name: httpsproxy
+          secret:
+            secretName: httpsproxy-certs
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: httpsproxy-svc
+  namespace: proxy-system
+  labels:
+    app: httpsproxy
+spec:
+  ports:
+    - port: 443
+      targetPort: 9443
+      name: https
+  selector:
+    app: httpsproxy
+  type: LoadBalancer
